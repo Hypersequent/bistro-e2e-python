@@ -1,0 +1,15 @@
+.DS_Store
+__pycache__/
+*.pyc
+.pytest_cache/
+test-results/
+junit-results/
+.env
+.env.*
+!.env.example
+.venv/
+*.egg-info/
+dist/
+build/
+.ruff_cache/
+.qaspherecli

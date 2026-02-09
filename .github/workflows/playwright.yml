@@ -1,0 +1,56 @@
+name: Playwright Tests
+
+permissions:
+  contents: read
+  checks: write
+  id-token: write
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: bistro-e2e-python
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+
+      - name: Install Playwright browsers
+        run: playwright install --with-deps
+
+      - name: Create .env file
+        run: echo "DEMO_BASE_URL=https://hypersequent.github.io/bistro/" > .env
+
+      - name: Run Playwright tests
+        run: pytest --browser chromium -v
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: bistro-e2e-python/test-results/
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: junit-results
+          path: bistro-e2e-python/junit-results/
+
+      - name: Publish JUnit Report
+        uses: mikepenz/action-junit-report@v4
+        if: always()
+        with:
+          report_paths: "bistro-e2e-python/junit-results/*.xml"
