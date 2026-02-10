@@ -6,26 +6,32 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Map test function names to QA Sphere-friendly display names with BD-XXX markers.
-# qas-cli matches markers in the format PROJECT-SEQUENCE (e.g. BD-023).
-_QAS_NAMES: dict[str, str] = {
-    "test_bd023_cart_operations": "BD-023: Cart operations",
-    "test_bd022_order_with_cash_payment": "BD-022: Order with cash payment",
-    "test_bd055_about_page_content": "BD-055: About page content",
-    "test_bd026_navbar_navigation_state": "BD-026: Navbar navigation state",
-    "test_bd038_menu_tabs_and_products": "BD-038: Menu tabs and products",
-    "test_bd052_welcome_banner": "BD-052: Welcome banner",
-}
+# QA Sphere project code. Used to detect test case markers in function names.
+# e.g. test_bd023_cart_operations -> BD-023:test_bd023_cart_operations
+QAS_PROJECT_CODE = "BD"
+
+_QAS_MARKER_RE = re.compile(rf"test_({QAS_PROJECT_CODE})(\d+)_", re.IGNORECASE)
+
+
+def _rewrite_qas_name(name: str) -> str:
+    """Rewrite test name to include QA Sphere marker prefix.
+
+    test_bd023_cart_operations[chromium] -> BD-023:test_bd023_cart_operations[chromium]
+    """
+    m = _QAS_MARKER_RE.match(name)
+    if not m:
+        return name
+    code = m.group(1).upper()
+    seq = m.group(2)
+    return f"{code}-{seq}:{name}"
 
 
 def pytest_itemcollected(item: pytest.Item) -> None:
-    """Rewrite test node IDs so JUnit XML contains QA Sphere markers (BD-XXX)."""
-    # item.name looks like "test_bd023_cart_operations[chromium]"
-    base_name = re.sub(r"\[.*\]$", "", item.name)
-    if base_name in _QAS_NAMES:
-        suffix = item.name[len(base_name) :]  # e.g. "[chromium]"
-        item._nodeid = item._nodeid.replace(item.name, _QAS_NAMES[base_name] + suffix)
-        item.name = _QAS_NAMES[base_name] + suffix
+    """Rewrite test node IDs so JUnit XML contains QA Sphere markers."""
+    new_name = _rewrite_qas_name(item.name)
+    if new_name != item.name:
+        item._nodeid = item._nodeid.replace(item.name, new_name)
+        item.name = new_name
 
 
 @pytest.fixture(scope="session")
